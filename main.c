@@ -1,100 +1,52 @@
-#include <errno.h>
-#include "function.h"
+#include <fcntl.h>
+#include "cfunction.h"
 
-int main(int argc, char *argv[]) {
 
-    char *o_arg = calloc(64, sizeof(char));
-    float tempo = 0;
-    char *host = calloc(32, sizeof(char));
-    char *port_temp = calloc(32, sizeof(char));
+int main(int argc, char* argv[]) {
 
-    getOpt(argc, argv, o_arg, &tempo);
-    in_port_t port = isAddrOk(o_arg, port_temp, host);
-    printf("host: %s port: %s port %d \n", host, port_temp, port);
-    free(o_arg);
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
-        fprintf(stderr, "pipe failure");
-        exit(2);
-    }
-    int c_pid = fork();
-    if (c_pid == -1) {
-        fprintf(stderr, "fork failure");
-        exit(2);
-    }
-    if (c_pid == 0) {
-        close(pipefd[1]); //close unused
+int sock_fd=socket(AF_INET, SOCK_STREAM,0);
+if(sock_fd==-1){
+    fprintf(stderr, "client cannot create socket");
+    exit(2);
+}
+struct sockaddr_in addresstruct;
+int Port=strtol(argv[1], NULL, 0);
+addresstruct.sin_family=AF_INET;
+addresstruct.sin_port=htons(Port);
 
-        struct epoll_event ev, events[3];
-        int sock_fd, new_socket, nfds, epollfd, n;
+const char* Host="127.0.0.1";
+int res=inet_aton(Host, &addresstruct.sin_addr);
+if(!res){
+    fprintf(stderr, "uncorret serwer addres");
+    exit(2);
+}
+int proba=11;
+while(--proba){
+    if(connect(sock_fd, (struct sockaddr*)&addresstruct, sizeof(addresstruct))!=-1) break;
+}
+if(!proba){
+    fprintf(stderr, "connection not accepted");
+    exit(2);
+}
+    fprintf(stderr,"nawiązane połączenie z serwerem %s (port %d)\n",
+            inet_ntoa(addresstruct.sin_addr),ntohs(addresstruct.sin_port));
 
-        sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock_fd == -1) {
-            fprintf(stderr, "cannot create socket");
-            exit(1);
-        }
-        register_addr(sock_fd, host, port);
-        if (listen(sock_fd, 10)) {
-            fprintf(stderr, "cannot change mode to pasive");
-            exit(1);
-        }
-
-        epollfd = epoll_create(3);
-        if (epollfd == -1) {
-            fprintf(stderr, "epoll create error");
-            exit(1);
-        }
-        ev.data.fd = sock_fd;
-        ev.events = EPOLLIN | EPOLLET;
-        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sock_fd, &ev) == -1) {
-            perror("epoll_ctl: listen_sock");
-            exit(EXIT_FAILURE);
-        }
-        for (;;) {
-            nfds = epoll_wait(epollfd, events, 3, -1);
-            if (nfds == -1) {
-                perror("epoll_wait");
-                exit(EXIT_FAILURE);
-            }
-            for (n = 0; n < nfds; ++n) {
-                if (events[n].data.fd == sock_fd) {
-                    new_socket = connection(sock_fd);
-                    if(new_socket==-1){
-                        if((errno == EAGAIN) || (errno == EWOULDBLOCK)) break;
-                        else{
-                            perror("accept");
-                            break;
-                        }
-                    }
-                    set_non_blocking(new_socket);
-                    ev.events = EPOLLIN|EPOLLET;
-                    ev.data.fd = new_socket;
-                    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_socket, &ev) == -1) {
-                        fprintf(stderr, "epoll ctl error");
-                        exit(1);
-                    }
-                } else {
-                    int val;
-                    char buf[640]={0};
-                    int readed=read(pipefd[0], buf, 640);
-                    if((val=send(events[n].data.fd, buf, 640, 0)) == -1)
-                    {
-                        perror("send");
-                        break;
-                    }
-                    fprintf(stderr, "%s %d %d \n", buf,val, events[n].data.fd);
-                    epoll_ctl(nfds, EPOLL_CTL_DEL, events[n].data.fd, &ev);
-                    //close(events[n].data.fd);
+    send(sock_fd, "0", 1, 0);
+char buf[640];
+    int readed=0;
+    int i=0;
+        while ((readed += recv(sock_fd, buf, 640, 0)) > 0) {
+            send(sock_fd, "0", 1, 0);
+            fprintf(stderr, "%s %d\n", buf, readed);
+            readed=0;
+            if (readed < -1) {
+                if (shutdown(sock_fd, SHUT_RDWR)) {
+                    fprintf(stderr, "cannot shut down");
+                    return 2;
                 }
+                printf("naturalna śmierć");
             }
-        }
-    } else {
-        //rodzic
-        close(pipefd[0]); //close unused
-        char c = fabryka(pipefd[1], tempo, 'A');
-        printf("%c", c);
-        //fabryka bitów
-    }
 
-    return 0;
+        }
+
 }
