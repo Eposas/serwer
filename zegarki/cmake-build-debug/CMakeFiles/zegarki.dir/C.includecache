@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/aronika/CLionProjects/zegarki/main.c
+stdio.h
+-
+time.h
+-
+errno.h
+-
+string.h
+-
+unistd.h
+-
+stdlib.h
+-
+

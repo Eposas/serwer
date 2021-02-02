@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/zegarki.dir/main.c.o  -o zegarki 

@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/aronika/CLionProjects/signal/main.c
+stdio.h
+-
+signal.h
+-
+stdlib.h
+-
+unistd.h
+-
+
