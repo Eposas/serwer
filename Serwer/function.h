@@ -12,7 +12,7 @@
 #include <ctype.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
-
+#include <errno.h>
 
 
 void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
@@ -45,9 +45,9 @@ void fabryka(int pajpa, float tempo, char ASCI)
         char* buf=generate(ASCI);
         ASCI++;
         written+=check=write(pajpa, buf, 640);
-        if(check<640){
+        if(check!=640){
             if (errno == EAGAIN) {
-            sleep(1);
+                ASCI--;
             }
             else exit(1);
         }

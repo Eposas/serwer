@@ -1,56 +1,76 @@
-#include <fcntl.h>
 #include "cfunction.h"
 
 
 int main(int argc, char* argv[]) {
 
-    while (1) {
-    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock_fd == -1) {
-        fprintf(stderr, "client cannot create socket");
-        exit(2);
-    }
-    struct sockaddr_in addresstruct;
-    int Port = strtol(argv[1], NULL, 0);
-    addresstruct.sin_family = AF_INET;
-    addresstruct.sin_port = htons(Port);
+    char *o_arg = calloc(64, sizeof(char));
+    float decompose=0;
+    float tempo = 0;
+    int storage=0;
+    char *host = calloc(32, sizeof(char));
+    char *port_temp = calloc(32, sizeof(char));
 
-    const char *Host = "127.0.0.1";
-    int res = inet_aton(Host, &addresstruct.sin_addr);
-    if (!res) {
-        fprintf(stderr, "uncorret serwer addres");
-        exit(2);
+    getOpt(argc, argv, &storage, &tempo, &decompose, o_arg);
+    in_port_t port=isAddrOk(o_arg, port_temp, host);
+    calcvalue(&storage, &tempo, &decompose);
+    char* adr="127.0.0.1";
+    if(strcmp("localhost", host)==0) {
+        strcpy(host, adr);
+        printf("%s", host);
     }
 
-        int proba = 11;
-        while (--proba) {
-            if (connect(sock_fd, (struct sockaddr *) &addresstruct, sizeof(addresstruct)) != -1) break;
-        }
-        if (!proba) {
-            fprintf(stderr, "connection not accepted");
-            exit(2);
-        }
-        fprintf(stderr, "nawiązane połączenie z serwerem %s (port %d)\n",
-                inet_ntoa(addresstruct.sin_addr), ntohs(addresstruct.sin_port));
+    printf("storage %d, tempo %f, decompose %f, host %s, port %d \n", storage, tempo, decompose, host, port);
+    int owning=0;
 
+        while (1) {
 
-        send(sock_fd, "0", 1, 0);
-        char buf[1024];
-        int readed = 0;
-        int i = 0;
-        while ((readed += recv(sock_fd, buf, 1024, 0)) ==1024) {
-            send(sock_fd, "0", 1, 0);
-            fprintf(stderr, "%s %d\n", buf, readed);
-            readed = 0;
-            if (readed < -1) {
-                if (shutdown(sock_fd, SHUT_RDWR)) {
-                    fprintf(stderr, "cannot shut down");
-                    return 2;
+            if(owning >= storage-13*1024){
+                fprintf(stderr, "babciu więcej już nie zmieszcze %d %d", owning, storage);
+                exit(1);
+            }
+            printf("posiadam %d\n", owning);
+            int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+            if (sock_fd == -1) {
+                fprintf(stderr, "client cannot create socket");
+                exit(2);
+            }
+
+            struct sockaddr_in addresstruct;
+            addresstruct.sin_family = AF_INET;
+            addresstruct.sin_port = htons(port);
+
+            int res = inet_aton(host, &addresstruct.sin_addr);
+            if (!res) {
+                fprintf(stderr, "uncorret serwer addres");
+                exit(2);
+            }
+
+            int proba = 11;
+            while (--proba) {
+                if (connect(sock_fd, (struct sockaddr *) &addresstruct, sizeof(addresstruct)) != -1) break;
+            }
+            if (!proba) {
+                fprintf(stderr, "connection not accepted");
+                exit(2);
+            }
+            fprintf(stderr, "nawiązane połączenie z serwerem %s (port %d)\n",
+                    inet_ntoa(addresstruct.sin_addr), ntohs(addresstruct.sin_port));
+
+            send(sock_fd, "request", 7, 0);
+            char buf[1024];
+            for (int i = 0; i < 13;) {
+                if (recv(sock_fd, buf, 1024, 0) == 1024) {
+                  //  fprintf(stderr, "pakiet: %d \t%s \n", i, buf);
+                    i++;
+                    owning+=1024;
                 }
-                printf("naturalna śmierć");
+            }
+            sleep_after_comsumpcion(tempo);
+            if (close(sock_fd) == -1) {
+                fprintf(stderr, "\nklopoty\n");
+                exit(1);
             }
 
         }
-
     }
-}
+
