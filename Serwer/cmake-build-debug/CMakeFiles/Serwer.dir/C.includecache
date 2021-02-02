@@ -1,0 +1,36 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/aronika/CLionProjects/Serwer/dataS.h
+unistd.h
+-
+stdio.h
+-
+netinet/in.h
+-
+arpa/inet.h
+-
+ctype.h
+-
+
+/home/aronika/CLionProjects/Serwer/function.h
+stdio.h
+-
+getopt.h
+-
+stdlib.h
+-
+string.h
+-
+
+/home/aronika/CLionProjects/Serwer/main.c
+dataS.h
+/home/aronika/CLionProjects/Serwer/dataS.h
+function.h
+/home/aronika/CLionProjects/Serwer/function.h
+
