@@ -14,6 +14,7 @@
 
 
 void getOpt(int argc, char* argv[], int* storage, float* tempo, float*  decompose, char* host);
+
 void getOpt(int argc, char* argv[], int* storage, float* tempo, float*  decompose, char* o_arg){
     if(argc<2 || argc>4)
     {

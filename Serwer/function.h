@@ -1,7 +1,6 @@
 #ifndef SERWER_FUNCTION_H
 
 #define SERWER_FUNCTION_H
-
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
@@ -20,7 +19,7 @@ void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
 void register_addr(int sockfd, char* host, in_port_t port);
 int connection(int sockfd);
-char fabryka(int pajpa, float tempo, char ASCI);
+void fabryka(int pajpa, float tempo, char ASCI);
 char* generate(char ASCI);
 int set_non_blocking(int sockfd);
 
@@ -32,27 +31,32 @@ char* generate(char ASCI){
     return buf;
 }
 
-char fabryka(int pajpa, float tempo, char ASCI)
+void fabryka(int pajpa, float tempo, char ASCI)
 {//blok 640 bajtów tempo * 2662
     float onsec=tempo*2662;
-    struct timespec req={req.tv_sec=0, req.tv_nsec=100000}, rem;
+    struct timespec req={req.tv_sec=1, req.tv_nsec=0}, rem;
     int written=0;
     int check=0;
 
-    struct timespec time={time.tv_nsec=0, time.tv_sec=1};
-    while(check!=-1 ){
+    struct timespec time={time.tv_nsec=0, time.tv_sec=0};
+    while(1){
         if(ASCI>122) ASCI=65;
         if(ASCI>90 && ASCI<97) ASCI=97;
         char* buf=generate(ASCI);
         ASCI++;
         written+=check=write(pajpa, buf, 640);
+        if(check<640){
+            if (errno == EAGAIN) {
+            sleep(1);
+            }
+            else exit(1);
+        }
         if(written>=(int)onsec-640)
         {
             nanosleep(&req, &rem);
             written=0;
         }
     }
-    return ASCI;
 }
 
 int connection(int sockfd){

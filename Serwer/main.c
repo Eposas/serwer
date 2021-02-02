@@ -75,24 +75,29 @@ int main(int argc, char *argv[]) {
                     }
                 } else {
                     int val;
-                    char buf[640]={0};
-                    int readed=read(pipefd[0], buf, 640);
-                    if((val=send(events[n].data.fd, buf, 640, 0)) == -1)
-                    {
-                        perror("send");
-                        break;
+                    char buf[13][1024]={0};
+
+                    for(int i=0; i<13; i++) {
+                        int readed=0;
+                        while (readed < 1024) {
+                            readed += read(pipefd[0], buf, 1024);
+                        }
+                        if ((val = send(events[n].data.fd, buf, 1024, 0)) == -1) {
+                            perror("send");
+                            break;
+                        }
+                        fprintf(stderr, "%s %d %d \n", buf[i], val, events[n].data.fd);
                     }
-                    fprintf(stderr, "%s %d %d \n", buf,val, events[n].data.fd);
-                    epoll_ctl(nfds, EPOLL_CTL_DEL, events[n].data.fd, &ev);
-                    //close(events[n].data.fd);
+                    // epoll_ctl(nfds, EPOLL_CTL_DEL, events[n].data.fd, &ev);
+                    close(events[n].data.fd);
                 }
             }
         }
     } else {
         //rodzic
+        if (fcntl(pipefd[1], F_SETFL, O_NONBLOCK) < 0) exit(2);
         close(pipefd[0]); //close unused
-        char c = fabryka(pipefd[1], tempo, 'A');
-        printf("%c", c);
+        fabryka(pipefd[1], tempo, 'A');
         //fabryka bitów
     }
 
