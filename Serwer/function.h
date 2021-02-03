@@ -15,14 +15,70 @@
 #include <errno.h>
 #include <sys/poll.h>
 
+int desc[200]={0};
+int permits[200]={0};
+int zmarnowano[200]={0};
+
 void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
-void register_addr(int sockfd, char* host, in_port_t port);
-int connection(int sockfd);
-void fabryka(int pajpa, float tempo, char ASCI);
+void register_addr(int sock_fd, char* host, in_port_t port);
+int create_soc();
+void fabryka(int pipefd, float tempo, char ASCI);
 char* generate(char ASCI);
-int set_non_blocking(int sockfd);
+void can_read(int pipefd, int fd);
+void can_write(int pipefd, int fd);
+int can_close( int fd, int* flag);
+void wasted(int fd, int pipefd);
 
+
+
+
+void wasted(int fd, int pipefd){
+    char buf[1024];
+    for(int j=desc[fd]; j<13; j++) read(pipefd, buf, 1024);
+    zmarnowano[fd]=(13-desc[fd])*1024;
+    printf("%d zamrnowane\n", zmarnowano[fd]);
+    desc[fd]=13;
+}
+
+int can_close( int fd, int* flaga) {
+
+    if (desc[fd] == 13) {
+        desc[fd] = 0;
+        close(fd);
+        *flaga = 1;
+        //printf("podejrzane %d \n", desc[fd]);
+        permits[fd] = 0;
+        zmarnowano[fd]=0;
+        return -1;
+    }
+    return fd;
+}
+
+void can_write(int pipefd, int fd){
+    if(permits[fd]==1){
+        int val;
+        char buf[1024];
+        read(pipefd, buf, 1024);
+        if ((val = send(fd, buf, 1024, 0)) == -1) {
+            perror("disconected");
+        }
+        desc[fd]++;
+        fprintf(stderr, "%d %d %d \n", val, desc[fd], fd);
+    }
+}
+
+void can_read(int pipefd,  int fd){
+    int zajetosc;
+    if (ioctl(pipefd, FIONREAD, &zajetosc) != -1) {
+        if (zajetosc > 1024 * 13) {
+            permits[fd] = 1;
+            printf("deskryptor %d uzyskał pozwolenie \n", fd);
+        } else {
+            permits[fd] = 0;
+        }
+    }
+}
 
 char* generate(char ASCI){
     char* buf=calloc(640, sizeof(char));
@@ -31,12 +87,11 @@ char* generate(char ASCI){
     return buf;
 }
 
-void fabryka(int pajpa, float tempo, char ASCI)
-{//blok 640 bajtów tempo * 2662
+void fabryka(int pipefd, float tempo, char ASCI){//blok 640 bajtów tempo * 2662
     float onsec=tempo*2662;
     struct timespec req={req.tv_sec=1, req.tv_nsec=0}, rem;
     int written=0;
-    int check=0;
+    int check;
 
     struct timespec time={time.tv_nsec=0, time.tv_sec=0};
     while(1){
@@ -44,7 +99,7 @@ void fabryka(int pajpa, float tempo, char ASCI)
         if(ASCI>90 && ASCI<97) ASCI=97;
         char* buf=generate(ASCI);
         ASCI++;
-        written+=check=write(pajpa, buf, 640);
+        written+=check=write(pipefd, buf, 640);
         if(check!=640){
             if (errno == EAGAIN) {
                 ASCI--;
@@ -59,43 +114,55 @@ void fabryka(int pajpa, float tempo, char ASCI)
     }
 }
 
-int connection(int sockfd){
-    struct sockaddr_in peer;
-    socklen_t addr_len=sizeof(peer);
-    int new_socket=accept(sockfd, (struct sockaddr *)&peer, &addr_len);
-    if(new_socket==-1) {
-        fprintf(stderr, "connection new socket -1");
-        exit(2);
+int create_soc(){
+    int on=1;
+    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock_fd == -1) {
+        fprintf(stderr, "cannot create socket");
+        exit(1);
     }
-    else{
-        fprintf(stderr, "connnected to client %s port %d\n", inet_ntoa(peer.sin_addr), ntohs(peer.sin_port));
+    int res = setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR,
+                    (char *) &on, sizeof(on));
+    if (res < 0) {
+        perror("setsockopt() failed");
+        close(sock_fd);
+        exit(-1);
     }
-    return new_socket;
+
+    res = ioctl(sock_fd, FIONBIO, (char *) &on);
+    if (res < 0) {
+        perror("ioctl() failed");
+        close(sock_fd);
+        exit(-1);
+    }
+    return sock_fd;
 }
 
 
-void register_addr(int sockfd, char* host, in_port_t port){
-
-    struct sockaddr_in inet_obj;
-    inet_obj.sin_family = AF_INET;
-    inet_obj.sin_port = htons(port);
-    char* adr="127.0.0.1";
-    if(strcmp("localhost", host)==0)
-    {
-        strcpy(host, adr);
-        printf("%s", host);
-    }
-
-    int result = inet_aton(host,&inet_obj.sin_addr);
+void register_addr(int sock_fd, char* host, in_port_t port){
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family= AF_INET;
+    int res;
+    int result = inet_aton(host,&addr.sin_addr);
     if( ! result ) {
         fprintf(stderr,"uncorrect addres: %s\n",host);
         exit(1);
     }
-    if( bind(sockfd,(struct sockaddr *)&inet_obj,sizeof(inet_obj)) ) {
-        fprintf(stderr, "cannot bind port: %d host: %s result %d\n", port, host, result);
-        exit(1);
+    addr.sin_port= htons(port);
+    res = bind(sock_fd,(struct sockaddr *)&addr, sizeof(addr));
+    if (res < 0)
+    {
+        perror("bind() failed");
+        close(sock_fd);
+        exit(-1);
     }
-
+    res = listen(sock_fd, 32);
+    if (res < 0) {
+        perror("listen() failed");
+        close(sock_fd);
+        exit(-1);
+    }
 }
 
 void getOpt(int argc, char* argv[], char* o_arg, float *tempo) {
@@ -131,8 +198,7 @@ void getOpt(int argc, char* argv[], char* o_arg, float *tempo) {
     }
 }
 
-in_addr_t isAddrOk(char* o_arg,  char* port, char* host)
-{
+in_addr_t isAddrOk(char* o_arg,  char* port, char* host){
     sscanf(o_arg, "%[^:]:%s", host, port);
     if(strtol(port, NULL, 0) == 0)
     {
@@ -140,25 +206,6 @@ in_addr_t isAddrOk(char* o_arg,  char* port, char* host)
         strcpy(host, "localhost");
     }
     return strtol(port, NULL, 0);
-}
-
-int set_non_blocking(int sockfd)
-{
-    int flags, s;
-    flags = fcntl(sockfd, F_GETFL, 0);
-    if(flags == -1)
-    {
-        perror("fcntl");
-        return -1;
-    }
-    flags |= O_NONBLOCK;
-    s = fcntl(sockfd, F_SETFL, flags);
-    if(s == -1)
-    {
-        perror("fcntl");
-        return -1;
-    }
-    return 0;
 }
 
 

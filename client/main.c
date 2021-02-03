@@ -18,6 +18,7 @@ int main(int argc, char* argv[]) {
         printf("%s", host);
     }
 
+
     printf("storage %d, tempo %f, decompose %f, host %s, port %d \n", storage, tempo, decompose, host, port);
     //set_alarm();
     struct timespec start;
