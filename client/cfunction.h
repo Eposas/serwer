@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <signal.h>
 
 
 
@@ -17,6 +18,37 @@ void getOpt(int argc, char* argv[], int* storage, float* tempo, float*  decompos
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
 void calcvalue(int* storage, float* tempo, float* decompose);
 void sleep_after_comsumpcion(float tempo);
+void sleep_decompose(struct timespec start, struct timespec stop, float decompose, int* mam);
+void catcher(int sig);
+void exitfunction(int status, void* message);
+double calc_time(struct timespec t1, struct timespec t2);
+
+
+void exitfunction(int status, void* message){
+    printf("%s", (char*)message);
+
+}
+
+
+double calc_time(struct timespec t1, struct timespec t2)
+{
+   double val= t1.tv_sec - t1.tv_sec + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0;
+   return val;
+}
+
+void sleep_decompose(struct timespec start, struct timespec stop, float decompose, int* mam){
+
+    double value=stop.tv_sec - start.tv_sec + (stop.tv_nsec - start.tv_nsec) / 1000000000.0;
+    int del=(int)(value*decompose);
+    *mam=*mam-del;
+    if(*mam<0) *mam=0;
+    printf("czas petli %f niszcze %d\n", value, del);
+    alarm((int)value);
+}
+
+void catcher(int sig){
+    printf("signal cought %d \n", sig);
+}
 
 void sleep_after_comsumpcion(float tempo) {
     struct timespec sleeptime;
@@ -24,6 +56,7 @@ void sleep_after_comsumpcion(float tempo) {
     long int tmp = 1024 / (tempo * 4435) * 1000000000;
     sleeptime.tv_nsec = tmp % 1000000000;
     sleeptime.tv_sec = tmp - (tmp % 1000000000);
+    printf("spie %ld \n", tmp);
     nanosleep(&sleeptime, &wake);
 }
 void calcvalue(int* storage, float* tempo, float* decompose){

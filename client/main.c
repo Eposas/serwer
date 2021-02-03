@@ -9,6 +9,8 @@ int main(int argc, char* argv[]) {
     int storage=0;
     char *host = calloc(32, sizeof(char));
     char *port_temp = calloc(32, sizeof(char));
+    struct timespec time_start;
+    struct timespec time_stop;
 
     getOpt(argc, argv, &storage, &tempo, &decompose, o_arg);
     in_port_t port=isAddrOk(o_arg, port_temp, host);
@@ -20,10 +22,15 @@ int main(int argc, char* argv[]) {
     }
 
     printf("storage %d, tempo %f, decompose %f, host %s, port %d \n", storage, tempo, decompose, host, port);
+    struct sigaction sack;
+    sigemptyset(&sack.sa_mask);
+    sack.sa_flags=0;
+    sack.sa_handler=catcher;
+    sigaction(SIGALRM, &sack, NULL);
     int owning=0;
 
         while (1) {
-
+            clock_gettime(CLOCK_REALTIME, &time_start);
             if(owning >= storage-13*1024){
                 fprintf(stderr, "babciu więcej już nie zmieszcze %d %d", owning, storage);
                 exit(1);
@@ -60,14 +67,21 @@ int main(int argc, char* argv[]) {
             char buf[1024];
             for (int i = 0; i < 13;) {
                 if (recv(sock_fd, buf, 1024, 0) == 1024) {
-                  //  fprintf(stderr, "pakiet: %d \t%s \n", i, buf);
                     i++;
                     owning+=1024;
                 }
             }
             sleep_after_comsumpcion(tempo);
+            clock_gettime(CLOCK_REALTIME, &time_stop);
+            sleep_decompose(time_start, time_stop, decompose, &owning);
             if (close(sock_fd) == -1) {
                 fprintf(stderr, "\nklopoty\n");
+                exit(1);
+            }
+            char* message="dsa";
+            int r=on_exit(exitfunction, (void*)message);
+            if(r!=0){
+                fprintf(stderr, "cannot set exit function");
                 exit(1);
             }
 
