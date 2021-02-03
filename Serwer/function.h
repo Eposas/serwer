@@ -13,7 +13,7 @@
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include <errno.h>
-
+#include <sys/poll.h>
 
 void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
@@ -91,7 +91,6 @@ void register_addr(int sockfd, char* host, in_port_t port){
         fprintf(stderr,"uncorrect addres: %s\n",host);
         exit(1);
     }
-    set_non_blocking(sockfd);
     if( bind(sockfd,(struct sockaddr *)&inet_obj,sizeof(inet_obj)) ) {
         fprintf(stderr, "cannot bind port: %d host: %s result %d\n", port, host, result);
         exit(1);
