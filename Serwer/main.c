@@ -1,5 +1,5 @@
 
-#include <sys/ioctl.h>
+
 #include "function.h"
 
 int main(int argc, char *argv[]) {
@@ -28,13 +28,20 @@ int main(int argc, char *argv[]) {
     }
     if (c_pid == 0) {
         close(pipefd[1]); //close unused
-        int sock_fd, new_socket, struct_num=1;
+        int sock_fd, new_socket, struct_num=2;
         sock_fd=create_soc();
         register_addr(sock_fd, host, port);
         memset(descriptors, 0, sizeof(descriptors));
+
         descriptors[0].fd = sock_fd;
         descriptors[0].events = POLLIN;
+
+        int timer_fd=create_and_set_timer();
+        descriptors[1].fd = timer_fd;
+        descriptors[1].events=POLLIN;
+
         do {
+
 
             if(poll(descriptors, struct_num, -1) < 0){
                 fprintf(stdout, "poll error");
@@ -51,34 +58,48 @@ int main(int argc, char *argv[]) {
                     //end_server = 1;
                     //break;
                 }
-                if (descriptors[i].fd == sock_fd) {
-                    do {
-                        new_socket = accept(sock_fd, NULL, NULL);
-                        if (new_socket < 0) {
-                            if (errno != EWOULDBLOCK) {
-                                fprintf(stdout, "new sock error");
-                                end_server = 1;
-                            }
-                            break;
-                        }
-                        descriptors[struct_num].fd = new_socket;
-                        descriptors[struct_num].events = POLLIN;
-                        struct_num++;
-                    } while (new_socket != -1);
+                if (descriptors[i].fd == timer_fd) {
+                    int a;
+                    if (read(descriptors[i].fd, &a, 8) == -1) {
+                        fprintf(stdin, "read error");
+                    } else{
+                        struct timespec val;
+                        clock_gettime(CLOCK_REALTIME, &val);
+                        long pipe_size = (long)fcntl(pipefd[0], 1024+8);
+                        int zajetosc;
+                        ioctl(pipefd[0], FIONREAD, &zajetosc);
+                        printf("%ld %ld %ld %d\n", val.tv_sec, val.tv_nsec, pipe_size, zajetosc);
+                    }
                 } else {
+                    if (descriptors[i].fd == sock_fd) {
+                        do {
+                            new_socket = accept(sock_fd, NULL, NULL);
+                            if (new_socket < 0) {
+                                if (errno != EWOULDBLOCK) {
+                                    fprintf(stdout, "new sock error");
+                                    end_server = 1;
+                                }
+                                break;
+                            }
+                            descriptors[struct_num].fd = new_socket;
+                            descriptors[struct_num].events = POLLIN;
+                            struct_num++;
+                        } while (new_socket != -1);
+                    } else {
                         can_read(pipefd[0], descriptors[i].fd);
                         can_write(pipefd[0], descriptors[i].fd);
-                        descriptors[i].fd =can_close(descriptors[i].fd, &flaga);
-                }
-                if (flaga) {
-                    flaga = 0;
-                    for (i = 0; i < struct_num; i++) {
-                        if (descriptors[i].fd == -1) {
-                            for (int j = i; j < struct_num; j++) {
-                                descriptors[j].fd = descriptors[j + 1].fd;
+                        descriptors[i].fd = can_close(descriptors[i].fd, &flaga);
+                    }
+                    if (flaga) {
+                        flaga = 0;
+                        for (i = 0; i < struct_num; i++) {
+                            if (descriptors[i].fd == -1) {
+                                for (int j = i; j < struct_num; j++) {
+                                    descriptors[j].fd = descriptors[j + 1].fd;
+                                }
+                                i--;
+                                struct_num--;
                             }
-                            i--;
-                            struct_num--;
                         }
                     }
                 }

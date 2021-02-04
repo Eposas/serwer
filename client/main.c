@@ -25,6 +25,7 @@ int main(int argc, char* argv[]) {
 
     clock_gettime(CLOCK_REALTIME, &start);
 
+
         while (1) {
             struct timespec  stop, time_start/*, time_stop, time_rel*/;
             int sock_fd = socket(AF_INET, SOCK_STREAM, 0);

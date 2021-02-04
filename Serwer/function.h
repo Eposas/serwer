@@ -14,6 +14,10 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/poll.h>
+#include <sys/timerfd.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+//#include </usr/include/linux/fcntl.h>
 
 int desc[200]={0};
 int permits[200]={0};
@@ -29,8 +33,25 @@ void can_read(int pipefd, int fd);
 void can_write(int pipefd, int fd);
 int can_close( int fd, int* flag);
 void wasted(int fd, int pipefd);
+int create_and_set_timer();
 
 
+
+int create_and_set_timer()
+{
+    int timer_fd=timerfd_create(CLOCK_REALTIME, 0);
+    if(timer_fd==-1) {
+        fprintf(stdout, "timer create error");
+        exit(1);
+    }
+    struct timespec timeForTimer = { .tv_sec = 1, .tv_nsec = 0};
+    struct itimerspec new={ .it_interval = timeForTimer, .it_value = timeForTimer };
+    if(timerfd_settime(timer_fd,  0, &new, NULL)==-1){
+        fprintf(stdout, "settimer error");
+        exit(1);
+    }
+    return timer_fd;
+}
 
 
 void wasted(int fd, int pipefd){
@@ -102,6 +123,7 @@ void fabryka(int pipefd, float tempo, char ASCI){//blok 640 bajtów tempo * 2662
         written+=check=write(pipefd, buf, 640);
         if(check!=640){
             if (errno == EAGAIN) {
+                printf("nie zapisuje\n");
                 ASCI--;
             }
             else exit(1);
