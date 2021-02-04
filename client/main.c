@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
             sleep_after_comsumpcion(tempo, calc_time(stop, start));
             start.tv_nsec=stop.tv_nsec;
             start.tv_sec=stop.tv_sec;
-
+            printf("storage %d \n", owning);
           //  clock_gettime(CLOCK_MONOTONIC, &time_stop);
            /* double a=calc_time(&time_rel ,&time_start);
             double b=calc_time(&time_stop ,&time_rel );*/
@@ -87,6 +87,7 @@ int main(int argc, char* argv[]) {
             }*/
             if(owning >= storage-13*1024){
                 close(sock_fd);
+                printf("tutaj wywala");
                 raport(adr, port);
                 exit(0);
             }

@@ -27,7 +27,7 @@ void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
 void register_addr(int sock_fd, char* host, in_port_t port);
 int create_soc();
-void fabryka(int pipefd, float tempo, char ASCI);
+void fabryka(int pipefd, float tempo, char ASCI, int prod_fd);
 char* generate(char ASCI);
 void can_read(int pipefd, int fd);
 void can_write(int pipefd, int fd);
@@ -39,12 +39,12 @@ int create_and_set_timer();
 
 int create_and_set_timer()
 {
-    int timer_fd=timerfd_create(CLOCK_REALTIME, 0);
+    int timer_fd=timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK);
     if(timer_fd==-1) {
         fprintf(stdout, "timer create error");
         exit(1);
     }
-    struct timespec timeForTimer = { .tv_sec = 1, .tv_nsec = 0};
+    struct timespec timeForTimer = { .tv_sec = 5, .tv_nsec = 0};
     struct itimerspec new={ .it_interval = timeForTimer, .it_value = timeForTimer };
     if(timerfd_settime(timer_fd,  0, &new, NULL)==-1){
         fprintf(stdout, "settimer error");
@@ -108,7 +108,7 @@ char* generate(char ASCI){
     return buf;
 }
 
-void fabryka(int pipefd, float tempo, char ASCI){//blok 640 bajtów tempo * 2662
+void fabryka(int pipefd, float tempo, char ASCI, int prod_fd){//blok 640 bajtów tempo * 2662
     float onsec=tempo*2662;
     struct timespec req={req.tv_sec=1, req.tv_nsec=0}, rem;
     int written=0;
@@ -121,15 +121,18 @@ void fabryka(int pipefd, float tempo, char ASCI){//blok 640 bajtów tempo * 2662
         char* buf=generate(ASCI);
         ASCI++;
         written+=check=write(pipefd, buf, 640);
-        if(check!=640){
-            if (errno == EAGAIN) {
-                printf("nie zapisuje\n");
+       /* if(check!=640){
+         //   if (errno == EAGAIN) {
+         printf("check %d ", check);
                 ASCI--;
-            }
-            else exit(1);
-        }
-        if(written>=(int)onsec-640)
-        {
+           // }
+          //  else exit(1);
+        }*/
+            char onebyte = ASCI;
+            printf("  %c  ", ASCI);
+            write(prod_fd, &onebyte, sizeof(char));
+
+        if(written>=(int)onsec-640){
             nanosleep(&req, &rem);
             written=0;
         }

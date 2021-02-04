@@ -16,8 +16,8 @@ int main(int argc, char *argv[]) {
     printf("host: %s port: %s port %d \n", host, port_temp, port);
     free(o_arg);
 
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
+    int pipefd[2], pipe_prod[2];
+    if (pipe(pipefd) == -1 || pipe(pipe_prod)==-1) {
         fprintf(stderr, "pipe failure");
         exit(2);
     }
@@ -27,7 +27,9 @@ int main(int argc, char *argv[]) {
         exit(2);
     }
     if (c_pid == 0) {
+        if (fcntl(pipe_prod[0], F_SETFL, O_NONBLOCK) < 0) exit(2);
         close(pipefd[1]); //close unused
+        close(pipe_prod[1]);
         int sock_fd, new_socket, struct_num=2;
         sock_fd=create_soc();
         register_addr(sock_fd, host, port);
@@ -67,8 +69,16 @@ int main(int argc, char *argv[]) {
                         clock_gettime(CLOCK_REALTIME, &val);
                         long pipe_size = (long)fcntl(pipefd[0], 1024+8);
                         int zajetosc;
+                        char buf[pipe_size];
                         ioctl(pipefd[0], FIONREAD, &zajetosc);
-                        printf("%ld %ld %ld %d\n", val.tv_sec, val.tv_nsec, pipe_size, zajetosc);
+                        int produkcja=read(pipe_prod[0], buf, pipe_size);
+                        if(produkcja==-1)
+                        {
+                            if (errno == EAGAIN) {
+                            produkcja=0;
+                            }else exit(1);
+                        }
+                        printf("%ld %ld %ld %d %d %d\n", val.tv_sec, val.tv_nsec, pipe_size, zajetosc, current_size-2, produkcja);
                     }
                 } else {
                     if (descriptors[i].fd == sock_fd) {
@@ -107,9 +117,9 @@ int main(int argc, char *argv[]) {
         } while (end_server == 0);
     }else {
         //rodzic
-        if (fcntl(pipefd[1], F_SETFL, O_NONBLOCK) < 0) exit(2);
         close(pipefd[0]);
-        fabryka(pipefd[1], tempo, 'A');
+        close(pipe_prod[0]);
+        fabryka(pipefd[1], tempo, 'A', pipe_prod[1]);
         //fabryka bitów
     }
 
