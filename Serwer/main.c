@@ -1,5 +1,3 @@
-
-
 #include "function.h"
 
 int main(int argc, char *argv[]) {
@@ -42,8 +40,10 @@ int main(int argc, char *argv[]) {
         descriptors[1].fd = timer_fd;
         descriptors[1].events=POLLIN;
 
+        /*
+         * 1.while do którego wchodzę
+         * 2. jeżeli ponad 13 to robię */
         do {
-
             if(poll(descriptors, struct_num, -1) < 0){
                 fprintf(stdout, "poll error");
                 break;
@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
                                 for (int j = i; j < struct_num; j++) {
                                     descriptors[j].fd = descriptors[j + 1].fd;
                                 }
+                                printf("\n\n\n jak często to jest \n");
                                 i--;
                                 struct_num--;
                             }

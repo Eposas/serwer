@@ -10,19 +10,23 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ctype.h>
-#include <sys/epoll.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/poll.h>
 #include <sys/timerfd.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 //#include </usr/include/linux/fcntl.h>
 
 int desc[200]={0};
 int permits[200]={0};
 int zmarnowano[200]={0};
 int wydano=0;
+struct addrinfo clients[200];
 
 void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
@@ -39,12 +43,13 @@ void get_raport(int pipefd, int prod_fd, int size);
 
 
 void get_raport(int pipefd, int prod_fd, int size){
+    int zajetosc;
+    long pipe_size = (long)fcntl(pipefd, 1024+8); //1024+8 = GETPIPESZ
+    char buf[pipe_size];
     struct timespec val;
     clock_gettime(CLOCK_REALTIME, &val);
-    long pipe_size = (long)fcntl(pipefd, 1024+8);
-    int zajetosc;
-    char buf[pipe_size];
     ioctl(pipefd, FIONREAD, &zajetosc);
+
     int produkcja=read(prod_fd, buf, pipe_size); //liczba wybrodukowanych bloków 640B
     if(produkcja==-1)
     {
@@ -52,9 +57,12 @@ void get_raport(int pipefd, int prod_fd, int size){
             produkcja=0;
         }else exit(1);
     }
+
     double Prc=(((double)zajetosc/(double)pipe_size)*100);
-    printf("\n**********************\nTS: %ld %ld \n zajętość: %f %% pojemność: %d\n liczba klientów: %d"
-           "  przepływ: %d\n**********************\n\n", val.tv_sec, val.tv_nsec, Prc, zajetosc, size, (produkcja-wydano)*640);
+    printf("\n**********************\nTS: "
+           "%ld %ld \n zajętość: %f %% pojemność: %d\n liczba klientów: %d"
+           "  przepływ: %d\n**********************\n\n",
+           val.tv_sec, val.tv_nsec, Prc, zajetosc, size, (produkcja-wydano)*640);
     wydano=0;
 }
 

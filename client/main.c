@@ -63,11 +63,12 @@ int main(int argc, char* argv[]) {
            //send(sock_fd, "request", 7, 0);
             char buf[1024];
             clock_gettime(CLOCK_REALTIME, &start);
+            int r;
             for (int i = 0; i < 13;) {
-                if (recv(sock_fd, buf, 1024, 0) == 1024) {
+                if ((r=recv(sock_fd, buf, 1024, 0)) == 1024) {
                     i++;
                     owning+=1024;
-                }
+                }else if(r==0) exit(1);
             }
             clock_gettime(CLOCK_REALTIME, &stop);
             printf("%f", calc_time(stop, start));
@@ -97,8 +98,6 @@ int main(int argc, char* argv[]) {
                 fprintf(stderr, "\nklopoty\n");
                 exit(1);
             }
-
-
 
         }
     }
