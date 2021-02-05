@@ -11,7 +11,10 @@
 #include <time.h>
 #include <signal.h>
 #include <sys/time.h>
-
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 float decompose=0;
 int owning=0;
@@ -28,7 +31,7 @@ void raport();
 
 
 void raport(char* adr, int port){
-    char text[100];
+    char text[200];
     struct timespec real;
     clock_gettime(CLOCK_REALTIME, &real);
     int PID=getpid();
@@ -65,7 +68,7 @@ void exitfunction(int status, void* message){
 
 double calc_time(struct timespec t2, struct timespec t1)
 {
-    long long sec, nsec;
+    unsigned long long int sec, nsec;
     if(t2.tv_sec==t1.tv_sec)
     {
         sec=0;
@@ -73,9 +76,9 @@ double calc_time(struct timespec t2, struct timespec t1)
     }
     else
     {
-        long int h1=t1.tv_sec*1000000000+t1.tv_nsec;
-        long int h2=t2.tv_sec*1000000000+t2.tv_nsec;
-        long int wynik=h2-h1;
+        unsigned long long int h1=t1.tv_sec*1000000000+t1.tv_nsec;
+        unsigned long long int h2=t2.tv_sec*1000000000+t2.tv_nsec;
+        unsigned long long int wynik=h2-h1;
         sec=wynik/1000000000;
         nsec=wynik-sec*1000000000;
     }
@@ -91,9 +94,11 @@ void sleep_after_comsumpcion(float tempo, double time) {
     sleeptime.tv_sec = (int)tmp;
     sleeptime.tv_nsec = (tmp-(int)tmp)*1000000000;
     nanosleep(&sleeptime, &wake);
-    owning=owning-(int)(time*decompose);
+    owning=owning-(int)((tmp+time)*decompose);
+    printf("owning %d zjedzono %f \n", owning, (tmp+time)*decompose);
     if(owning<0) owning=0;
     if(wake.tv_nsec!=0 || wake.tv_sec!=0) exit(1);
+
 }
 
 void calcvalue(int* storage, float* tempo){

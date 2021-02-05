@@ -83,6 +83,7 @@ int main(int argc, char *argv[]) {
                         can_write(pipefd[0], descriptors[i].fd);
                         descriptors[i].fd = can_close(descriptors[i].fd, &flaga);
                     }
+
                     if (flaga) {
                         flaga = 0;
                         for (i = 0; i < struct_num; i++) {
