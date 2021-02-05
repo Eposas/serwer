@@ -44,7 +44,6 @@ int main(int argc, char *argv[]) {
 
         do {
 
-
             if(poll(descriptors, struct_num, -1) < 0){
                 fprintf(stdout, "poll error");
                 break;
@@ -53,32 +52,16 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < current_size; i++) {
                 if (descriptors[i].revents == 0)
                     continue;
-                if (descriptors[i].revents != POLLIN) {
-                    //fprintf(stdout, "revent error");
-                    printf("disconected\n");
+                if (descriptors[i].revents != POLLOUT && descriptors[i].fd!= timer_fd && descriptors[i].fd!= sock_fd) {
+                    //sytuacja gdy klient zrobi ctrl + C
                     wasted(descriptors[i].fd, pipefd[0]);
-                    //end_server = 1;
-                    //break;
                 }
                 if (descriptors[i].fd == timer_fd) {
                     int a;
-                    if (read(descriptors[i].fd, &a, 8) == -1) {
-                        fprintf(stdin, "read error");
-                    } else{
-                        struct timespec val;
-                        clock_gettime(CLOCK_REALTIME, &val);
-                        long pipe_size = (long)fcntl(pipefd[0], 1024+8);
-                        int zajetosc;
-                        char buf[pipe_size];
-                        ioctl(pipefd[0], FIONREAD, &zajetosc);
-                        int produkcja=read(pipe_prod[0], buf, pipe_size);
-                        if(produkcja==-1)
-                        {
-                            if (errno == EAGAIN) {
-                            produkcja=0;
-                            }else exit(1);
-                        }
-                        printf("%ld %ld %ld %d %d %d\n", val.tv_sec, val.tv_nsec, pipe_size, zajetosc, current_size-2, produkcja);
+                    if (read(descriptors[i].fd, &a, 8) == -1) { //odczyt budzika
+                        fprintf(stdout, "read error");
+                    } else{ //raport co 5 sec
+                        get_raport(pipefd[0], pipe_prod[0], current_size-2);
                     }
                 } else {
                     if (descriptors[i].fd == sock_fd) {
@@ -92,7 +75,7 @@ int main(int argc, char *argv[]) {
                                 break;
                             }
                             descriptors[struct_num].fd = new_socket;
-                            descriptors[struct_num].events = POLLIN;
+                            descriptors[struct_num].events = POLLOUT;
                             struct_num++;
                         } while (new_socket != -1);
                     } else {

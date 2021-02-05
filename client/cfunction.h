@@ -80,7 +80,6 @@ double calc_time(struct timespec t2, struct timespec t1)
         nsec=wynik-sec*1000000000;
     }
     double res=sec+(double)nsec/1000000000;
-    printf(" res %f\n", res);
     return res;
 }
 

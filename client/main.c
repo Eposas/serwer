@@ -23,10 +23,11 @@ int main(int argc, char* argv[]) {
     //set_alarm();
     struct timespec start;
 
-    clock_gettime(CLOCK_REALTIME, &start);
+
 
 
         while (1) {
+
             struct timespec  stop, time_start/*, time_stop, time_rel*/;
             int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
             if (sock_fd == -1) {
@@ -59,17 +60,17 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "nawiązane połączenie z serwerem %s (port %d)\n",
                     inet_ntoa(addresstruct.sin_addr), ntohs(addresstruct.sin_port));
 
-            send(sock_fd, "request", 7, 0);
+           //send(sock_fd, "request", 7, 0);
             char buf[1024];
+            clock_gettime(CLOCK_REALTIME, &start);
             for (int i = 0; i < 13;) {
                 if (recv(sock_fd, buf, 1024, 0) == 1024) {
                     i++;
                     owning+=1024;
                 }
-              //  if(i==0)  clock_gettime(CLOCK_MONOTONIC, &time_rel);
             }
-
             clock_gettime(CLOCK_REALTIME, &stop);
+            printf("%f", calc_time(stop, start));
             sleep_after_comsumpcion(tempo, calc_time(stop, start));
             start.tv_nsec=stop.tv_nsec;
             start.tv_sec=stop.tv_sec;

@@ -22,6 +22,7 @@
 int desc[200]={0};
 int permits[200]={0};
 int zmarnowano[200]={0};
+int wydano=0;
 
 void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
@@ -34,8 +35,28 @@ void can_write(int pipefd, int fd);
 int can_close( int fd, int* flag);
 void wasted(int fd, int pipefd);
 int create_and_set_timer();
+void get_raport(int pipefd, int prod_fd, int size);
 
 
+void get_raport(int pipefd, int prod_fd, int size){
+    struct timespec val;
+    clock_gettime(CLOCK_REALTIME, &val);
+    long pipe_size = (long)fcntl(pipefd, 1024+8);
+    int zajetosc;
+    char buf[pipe_size];
+    ioctl(pipefd, FIONREAD, &zajetosc);
+    int produkcja=read(prod_fd, buf, pipe_size); //liczba wybrodukowanych bloków 640B
+    if(produkcja==-1)
+    {
+        if (errno == EAGAIN) {
+            produkcja=0;
+        }else exit(1);
+    }
+    double Prc=(((double)zajetosc/(double)pipe_size)*100);
+    printf("\n**********************\nTS: %ld %ld \n zajętość: %f %% pojemność: %d\n liczba klientów: %d"
+           "  przepływ: %d\n**********************\n\n", val.tv_sec, val.tv_nsec, Prc, zajetosc, size, (produkcja-wydano)*640);
+    wydano=0;
+}
 
 int create_and_set_timer()
 {
@@ -58,7 +79,7 @@ void wasted(int fd, int pipefd){
     char buf[1024];
     for(int j=desc[fd]; j<13; j++) read(pipefd, buf, 1024);
     zmarnowano[fd]=(13-desc[fd])*1024;
-    printf("%d zamrnowane\n", zmarnowano[fd]);
+    printf("############\nzmarnowano %d \n", zmarnowano[fd]);
     desc[fd]=13;
 }
 
@@ -68,9 +89,11 @@ int can_close( int fd, int* flaga) {
         desc[fd] = 0;
         close(fd);
         *flaga = 1;
-        //printf("podejrzane %d \n", desc[fd]);
         permits[fd] = 0;
         zmarnowano[fd]=0;
+        struct timespec timer;
+        clock_gettime(CLOCK_REALTIME, &timer);
+        printf("#############\nTS:%ld %ld \n#############\n\n", timer.tv_sec, timer.tv_nsec);
         return -1;
     }
     return fd;
@@ -82,10 +105,13 @@ void can_write(int pipefd, int fd){
         char buf[1024];
         read(pipefd, buf, 1024);
         if ((val = send(fd, buf, 1024, 0)) == -1) {
-            perror("disconected");
+           printf("dsadsa");
+           exit(3);
+        }else {
+            desc[fd]++;
+            wydano++;
         }
-        desc[fd]++;
-        fprintf(stderr, "%d %d %d \n", val, desc[fd], fd);
+      //  fprintf(stderr, "%d %d %d \n", val, desc[fd], fd);
     }
 }
 
@@ -94,7 +120,6 @@ void can_read(int pipefd,  int fd){
     if (ioctl(pipefd, FIONREAD, &zajetosc) != -1) {
         if (zajetosc > 1024 * 13) {
             permits[fd] = 1;
-            printf("deskryptor %d uzyskał pozwolenie \n", fd);
         } else {
             permits[fd] = 0;
         }
@@ -105,6 +130,7 @@ char* generate(char ASCI){
     char* buf=calloc(640, sizeof(char));
     memset(buf, ASCI, 640);
   //  printf("%s\n", buf);
+   // fprintf(stderr, "  %c  ", ASCI);
     return buf;
 }
 
@@ -129,7 +155,6 @@ void fabryka(int pipefd, float tempo, char ASCI, int prod_fd){//blok 640 bajtów
           //  else exit(1);
         }*/
             char onebyte = ASCI;
-            printf("  %c  ", ASCI);
             write(prod_fd, &onebyte, sizeof(char));
 
         if(written>=(int)onsec-640){
