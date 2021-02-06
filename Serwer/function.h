@@ -144,28 +144,28 @@ char* generate(char ASCI){
 
 void fabryka(int pipefd, float tempo, char ASCI, int prod_fd){//blok 640 bajtów tempo * 2662
     float onsec=tempo*2662;
-    struct timespec req={req.tv_sec=1, req.tv_nsec=0}, rem;
+    //ile na sekunde, zapisuje po bloku, śpie po sekundzie lub więcej jeżeli więcej zapisze niż na sec
+    struct timespec req, rem;
     int written=0;
     int check;
 
     struct timespec time={time.tv_nsec=0, time.tv_sec=0};
     while(1){
+        req.tv_sec=1, req.tv_nsec=0;
         if(ASCI>122) ASCI=65;
         if(ASCI>90 && ASCI<97) ASCI=97;
         char* buf=generate(ASCI);
         ASCI++;
         written+=check=write(pipefd, buf, 640);
-       /* if(check!=640){
-         //   if (errno == EAGAIN) {
-         printf("check %d ", check);
-                ASCI--;
-           // }
-          //  else exit(1);
-        }*/
+
             char onebyte = ASCI;
             write(prod_fd, &onebyte, sizeof(char));
 
-        if(written>=(int)onsec-640){
+        if(written>=(int)onsec){
+            int wr=written-(int)onsec;
+            float ad_sleep=wr/onsec;
+            req.tv_sec=req.tv_sec+(int)ad_sleep;
+            req.tv_nsec=req.tv_nsec+(ad_sleep-(int)ad_sleep)*1000000000;
             nanosleep(&req, &rem);
             written=0;
         }
