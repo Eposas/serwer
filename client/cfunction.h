@@ -95,8 +95,8 @@ void sleep_after_comsumpcion(float tempo, double time) {
     sleeptime.tv_nsec = (tmp-(int)tmp)*1000000000;
     nanosleep(&sleeptime, &wake);
     owning=owning-(int)((tmp+time)*decompose);
-    printf("owning %d zjedzono %f \n", owning, (tmp+time)*decompose);
     if(owning<0) owning=0;
+    printf("owning %d zjedzono %f \n", owning, (tmp+time)*decompose);
     if(wake.tv_nsec!=0 || wake.tv_sec!=0) exit(1);
 
 }

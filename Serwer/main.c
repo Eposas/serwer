@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     char *port_temp = calloc(32, sizeof(char));
     struct pollfd descriptors[200];
     int end_server=0, flaga;
-
+    int prev=0;
     getOpt(argc, argv, o_arg, &tempo);
     in_port_t port = isAddrOk(o_arg, port_temp, host);
     printf("host: %s port: %s port %d \n", host, port_temp, port);
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
                     if (read(descriptors[i].fd, &a, 8) == -1) { //odczyt budzika
                         fprintf(stdout, "read error");
                     } else{ //raport co 5 sec
-                        get_raport(pipefd[0], pipe_prod[0], current_size-2);
+                        get_raport(pipefd[0],  current_size-2, &prev);
                     }
                 } else {
                     if (descriptors[i].fd == sock_fd) {
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         //rodzic
         close(pipefd[0]);
         close(pipe_prod[0]);
-        fabryka(pipefd[1], tempo, 'A', pipe_prod[1]);
+        fabryka(pipefd[1], tempo, 'A');
         //fabryka bitów
     }
 

@@ -32,37 +32,31 @@ void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
 void register_addr(int sock_fd, char* host, in_port_t port);
 int create_soc();
-void fabryka(int pipefd, float tempo, char ASCI, int prod_fd);
+void fabryka(int pipefd, float tempo, char ASCI);
 char* generate(char ASCI);
 void can_read(int pipefd, int fd);
 void can_write(int pipefd, int fd);
 int can_close( int fd, int* flag);
 void wasted(int fd, int pipefd);
 int create_and_set_timer();
-void get_raport(int pipefd, int prod_fd, int size);
+void get_raport(int pipefd, int size, int* prev);
 
 
-void get_raport(int pipefd, int prod_fd, int size){
+void get_raport(int pipefd, int size, int* prev){
     int zajetosc;
     long pipe_size = (long)fcntl(pipefd, 1024+8); //1024+8 = GETPIPESZ
-    char buf[pipe_size];
     struct timespec val;
     clock_gettime(CLOCK_REALTIME, &val);
     ioctl(pipefd, FIONREAD, &zajetosc);
 
-    int produkcja=read(prod_fd, buf, pipe_size); //liczba wybrodukowanych bloków 640B
-    if(produkcja==-1)
-    {
-        if (errno == EAGAIN) {
-            produkcja=0;
-        }else exit(1);
-    }
-
     double Prc=(((double)zajetosc/(double)pipe_size)*100);
+    int prod=zajetosc-*prev;
+    if(prod<0) prod=0;
     printf("\n**********************\nTS: "
-           "%ld %ld \n zajętość: %f %% pojemność: %d\n liczba klientów: %d"
-           "  przepływ: %d\n**********************\n\n",
-           val.tv_sec, val.tv_nsec, Prc, zajetosc, size, (produkcja-wydano)*640);
+           "%ld %ld \nzajętość: %f %% pojemność: %d\nliczba klientów: %d"
+           " przepływ: %d\n**********************\n\n",
+           val.tv_sec, val.tv_nsec, Prc, zajetosc, size, prod-wydano*640);
+    *prev=zajetosc;
     wydano=0;
 }
 
@@ -142,7 +136,7 @@ char* generate(char ASCI){
     return buf;
 }
 
-void fabryka(int pipefd, float tempo, char ASCI, int prod_fd){//blok 640 bajtów tempo * 2662
+void fabryka(int pipefd, float tempo, char ASCI){//blok 640 bajtów tempo * 2662
     float onsec=tempo*2662;
     //ile na sekunde, zapisuje po bloku, śpie po sekundzie lub więcej jeżeli więcej zapisze niż na sec
     struct timespec req, rem;
@@ -157,9 +151,6 @@ void fabryka(int pipefd, float tempo, char ASCI, int prod_fd){//blok 640 bajtów
         char* buf=generate(ASCI);
         ASCI++;
         written+=check=write(pipefd, buf, 640);
-
-            char onebyte = ASCI;
-            write(prod_fd, &onebyte, sizeof(char));
 
         if(written>=(int)onsec){
             int wr=written-(int)onsec;
