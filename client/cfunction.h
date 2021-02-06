@@ -22,20 +22,26 @@ int owning=0;
 void getOpt(int argc, char* argv[], int* storage, float* tempo,  char* o_arg);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
 void calcvalue(int* storage, float* tempo);
-void sleep_after_comsumpcion(float tempo, double time);
+void sleep_after_comsumpcion(float tempo);
 //void catcher(int sig);
 void exitfunction(int status, void* message);
 double calc_time(struct timespec t2, struct timespec t1);
 //void set_alarm();
 void raport();
+void rubbish(double time);
 
+void rubbish(double time){
+    owning=owning-(int)(time*decompose);
+    if(owning<0) owning=0;
+    printf("owning %d zjedzono %f \n", owning, time*decompose);
+}
 
-void raport(char* adr, int port){
+void raport(){
     char text[200];
     struct timespec real;
     clock_gettime(CLOCK_REALTIME, &real);
     int PID=getpid();
-    sprintf(text, "PID: %d TS: %ld %ld %s %d\n", PID, real.tv_sec, real.tv_nsec, adr, port);
+    sprintf(text, "%%%%%%%%%%%%\n PID: %d TS: %ld %ld\n", PID, real.tv_sec, real.tv_nsec);
 
     int rr=on_exit(exitfunction, (void*)text);
     if(rr!=0){
@@ -43,21 +49,6 @@ void raport(char* adr, int port){
         exit(1);
     }
 }
-
-/*
-void set_alarm(){
-    struct sigaction sack;
-    sigemptyset(&sack.sa_mask);
-    sack.sa_flags=0;
-    sack.sa_handler=catcher;
-    sigaction(SIGALRM, &sack, NULL);
-
-    struct itimerval new;
-    new.it_interval.tv_sec=1, new.it_interval.tv_usec=1, new.it_value.tv_usec=0, new.it_value.tv_sec=1;
-    struct itimerval old;
-    old.it_interval.tv_sec=1, old.it_interval.tv_usec=1, old.it_value.tv_sec=1, old.it_value.tv_usec=0;
-    setitimer(SIGALRM, &new, &old);
-}*/
 
 
 void exitfunction(int status, void* message){
@@ -86,17 +77,14 @@ double calc_time(struct timespec t2, struct timespec t1)
     return res;
 }
 
-void sleep_after_comsumpcion(float tempo, double time) {
+void sleep_after_comsumpcion(float tempo) {
 
     struct timespec sleeptime;
     struct timespec wake={wake.tv_sec=0, wake.tv_nsec=0};
-    double tmp = (13*1024)/tempo;
+    double tmp = (1024)/tempo;
     sleeptime.tv_sec = (int)tmp;
     sleeptime.tv_nsec = (tmp-(int)tmp)*1000000000;
     nanosleep(&sleeptime, &wake);
-    owning=owning-(int)((tmp+time)*decompose);
-    if(owning<0) owning=0;
-    printf("owning %d zjedzono %f \n", owning, (tmp+time)*decompose);
     if(wake.tv_nsec!=0 || wake.tv_sec!=0) exit(1);
 
 }
