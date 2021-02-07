@@ -26,7 +26,7 @@ int desc[200]={0};
 int permits[200]={0};
 int zmarnowano[200]={0};
 int wydano=0;
-struct addrinfo clients[200];
+struct sockaddr_in clients[200];
 
 void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
@@ -36,7 +36,7 @@ void fabryka(int pipefd, float tempo, char ASCI);
 char* generate(char ASCI);
 void can_read(int pipefd, int fd);
 void can_write(int pipefd, int fd);
-int can_close( int fd, int* flag);
+int can_close( int fd, int* flag, char* adrr, int port);
 void wasted(int fd, int pipefd);
 int create_and_set_timer();
 void get_raport(int pipefd, int size, int* prev);
@@ -85,7 +85,7 @@ void wasted(int fd, int pipefd){
     desc[fd]=13;
 }
 
-int can_close( int fd, int* flaga) {
+int can_close( int fd, int* flaga, char* adrr, int port) {
 
     if (desc[fd] == 13) {
         desc[fd] = 0;
@@ -95,7 +95,7 @@ int can_close( int fd, int* flaga) {
         zmarnowano[fd]=0;
         struct timespec timer;
         clock_gettime(CLOCK_REALTIME, &timer);
-        printf("#############\nTS:%ld %ld \n#############\n\n", timer.tv_sec, timer.tv_nsec);
+        printf("#############\nTS:%ld %ld\nadress: %s port: %d \n#############\n\n", timer.tv_sec, timer.tv_nsec, adrr, port);
         return -1;
     }
     return fd;
@@ -112,6 +112,7 @@ void can_write(int pipefd, int fd){
         }else {
             desc[fd]++;
             wydano++;
+            printf("wysłano %d bajtow %c do %d \n",val, buf[1], fd );
         }
       //  fprintf(stderr, "%d %d %d \n", val, desc[fd], fd);
     }

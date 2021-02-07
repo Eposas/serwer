@@ -57,6 +57,7 @@ int main(int argc, char* argv[]) {
                 if ((r=recv(sock_fd, buf, 1024, 0)) == 1024) {
                     i++;
                     owning+=1024;
+                    printf("%c \n", buf[1]);
                 }else if(r==0) exit(1);
                 if(i==1) clock_gettime(CLOCK_MONOTONIC, &time_rel);
 

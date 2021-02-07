@@ -40,10 +40,15 @@ int main(int argc, char *argv[]) {
         descriptors[1].fd = timer_fd;
         descriptors[1].events=POLLIN;
 
+        printf("%d des \n ", descriptors[0].fd);
         /*
          * 1.while do którego wchodzę
          * 2. jeżeli ponad 13 to robię */
+        int t=0;
         do {
+
+
+
             if(poll(descriptors, struct_num, -1) < 0){
                 fprintf(stdout, "poll error");
                 break;
@@ -54,6 +59,7 @@ int main(int argc, char *argv[]) {
                     continue;
                 if (descriptors[i].revents != POLLOUT && descriptors[i].fd!= timer_fd && descriptors[i].fd!= sock_fd) {
                     //sytuacja gdy klient zrobi ctrl + C
+                    printf("klient się rozlaczyl deskryptor: %d \n", descriptors[i].fd);
                     wasted(descriptors[i].fd, pipefd[0]);
                 }
                 if (descriptors[i].fd == timer_fd) {
@@ -66,7 +72,8 @@ int main(int argc, char *argv[]) {
                 } else {
                     if (descriptors[i].fd == sock_fd) {
                         do {
-                            new_socket = accept(sock_fd, NULL, NULL);
+                            socklen_t addr_len = sizeof(clients[struct_num]);
+                            new_socket = accept(sock_fd, (struct sockaddr *)&clients[struct_num],&addr_len);
                             if (new_socket < 0) {
                                 if (errno != EWOULDBLOCK) {
                                     fprintf(stdout, "new sock error");
@@ -76,14 +83,14 @@ int main(int argc, char *argv[]) {
                             }
                             descriptors[struct_num].fd = new_socket;
                             descriptors[struct_num].events = POLLOUT;
+                            printf("%d %s %d \n",new_socket, inet_ntoa(clients[struct_num].sin_addr), ntohs(clients[struct_num].sin_port));
                             struct_num++;
                         } while (new_socket != -1);
                     } else {
                         can_read(pipefd[0], descriptors[i].fd);
                         can_write(pipefd[0], descriptors[i].fd);
-                        descriptors[i].fd = can_close(descriptors[i].fd, &flaga);
+                        descriptors[i].fd = can_close(descriptors[i].fd, &flaga, inet_ntoa(clients[descriptors[i].fd].sin_addr), ntohs(clients[descriptors[i].fd].sin_port));
                     }
-
                     if (flaga) {
                         flaga = 0;
                         for (i = 0; i < struct_num; i++) {
@@ -91,7 +98,6 @@ int main(int argc, char *argv[]) {
                                 for (int j = i; j < struct_num; j++) {
                                     descriptors[j].fd = descriptors[j + 1].fd;
                                 }
-                                printf("\n\n\n jak często to jest \n");
                                 i--;
                                 struct_num--;
                             }
