@@ -6,18 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/home/aronika/CLionProjects/Serwer/dataS.h
-unistd.h
--
-stdio.h
--
-netinet/in.h
--
-arpa/inet.h
--
-ctype.h
--
-
 /home/aronika/CLionProjects/Serwer/function.h
 stdio.h
 -
@@ -27,10 +15,36 @@ stdlib.h
 -
 string.h
 -
+time.h
+-
+unistd.h
+-
+netinet/in.h
+-
+arpa/inet.h
+-
+ctype.h
+-
+fcntl.h
+-
+errno.h
+-
+sys/poll.h
+-
+sys/timerfd.h
+-
+sys/ioctl.h
+-
+fcntl.h
+-
+sys/types.h
+-
+sys/socket.h
+-
+netdb.h
+-
 
 /home/aronika/CLionProjects/Serwer/main.c
-dataS.h
-/home/aronika/CLionProjects/Serwer/dataS.h
 function.h
 /home/aronika/CLionProjects/Serwer/function.h
 

@@ -19,32 +19,47 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#define POLLSIZE 200
 
-//#include </usr/include/linux/fcntl.h>
+int desc[POLLSIZE]={0}; //ilość bloków 1024 wysłanych do konkretnych klientów
+int zmarnowano[POLLSIZE]={0}; //ilość zmarnowanych danych przez klientów
+int wydano=0; //ilość wydanych bajtów w interwale 5s
+struct sockaddr_in clients[POLLSIZE]; //struktury z adresami klientów
 
-int desc[200]={0};
-int permits[200]={0};
-int zmarnowano[200]={0};
-int wydano=0;
-struct sockaddr_in clients[200];
+void getOpt(int argc, char* argv[], char* o_arg, float *tempo); //getOPT
+in_addr_t isAddrOk(char* o_arg,  char* port, char* host); // odczyt i gethostbyname [addr:]port
+void register_addr(int sock_fd, char* host, in_port_t port); // rejestracja
+int create_soc(); //tworzenie nasłuchującego socketu
+void fabryka(int pipefd, float tempo, char ASCI); //produkcja i oczekiwanie na bajty
+char* generate(char ASCI); //generowanie bloków po 640
+void can_write(int pipefd, int fd); // wysyłanie bloku 1024
+int can_close( int fd, int* flag, char* adrr, int port); //zamykanie/czyszczenie bloku
+void wasted(int fd, int pipefd); //
+int create_and_set_timer(); //tworzenie timera
+void get_raport(int pipefd, int size, int* prev); //wyświetlanie raportu
+void add_clients(int pipefd, int* pollsize, int* not_registered); //dodawanie "niezarejestrowanych klientow"
 
-void getOpt(int argc, char* argv[], char* o_arg, float *tempo);
-in_addr_t isAddrOk(char* o_arg,  char* port, char* host);
-void register_addr(int sock_fd, char* host, in_port_t port);
-int create_soc();
-void fabryka(int pipefd, float tempo, char ASCI);
-char* generate(char ASCI);
-void can_read(int pipefd, int fd);
-void can_write(int pipefd, int fd);
-int can_close( int fd, int* flag, char* adrr, int port);
-void wasted(int fd, int pipefd);
-int create_and_set_timer();
-void get_raport(int pipefd, int size, int* prev);
 
+
+void add_clients(int pipefd, int* pollsize, int* not_registered){
+    //za każde 13*1024 zwiększam ilość chętnych klientów (o ile istnieje)
+    int size;
+    if (ioctl(pipefd, FIONREAD, &size) != -1) {
+        while(size>=13*1024 && *not_registered>0){
+            *pollsize=*pollsize+1;
+            size=size-1024*13;
+            *not_registered=*not_registered-1;
+        }
+    }
+    else{
+        fprintf(stdout, "cannot ioctl");
+        exit(1);
+    }
+}
 
 void get_raport(int pipefd, int size, int* prev){
     int zajetosc;
-    long pipe_size = (long)fcntl(pipefd, 1024+8); //1024+8 = GETPIPESZ
+    long pipe_size = (long)fcntl(pipefd, 1024+8); //1024+8 = F_GETPIPE_SZ
     struct timespec val;
     clock_gettime(CLOCK_REALTIME, &val);
     ioctl(pipefd, FIONREAD, &zajetosc);
@@ -86,12 +101,11 @@ void wasted(int fd, int pipefd){
 }
 
 int can_close( int fd, int* flaga, char* adrr, int port) {
-
+    //sprawdza czy dany deskryptor ma 13 porcji, zeruje, zamyka
     if (desc[fd] == 13) {
         desc[fd] = 0;
         close(fd);
         *flaga = 1;
-        permits[fd] = 0;
         zmarnowano[fd]=0;
         struct timespec timer;
         clock_gettime(CLOCK_REALTIME, &timer);
@@ -102,38 +116,26 @@ int can_close( int fd, int* flaga, char* adrr, int port) {
 }
 
 void can_write(int pipefd, int fd){
-    if(permits[fd]==1){
         int val;
         char buf[1024];
         read(pipefd, buf, 1024);
-        if ((val = send(fd, buf, 1024, 0)) == -1) {
-           printf("dsadsa");
+        val = send(fd, buf, 1024, 0);
+        if (val == -1) {
+           printf("cannot send error %d ", fd);
            exit(3);
         }else {
             desc[fd]++;
             wydano++;
-            printf("wysłano %d bajtow %c do %d \n",val, buf[1], fd );
+        //    printf("wysłano %d bajtow %c do %d \n",val, buf[1], fd );
         }
       //  fprintf(stderr, "%d %d %d \n", val, desc[fd], fd);
-    }
-}
-
-void can_read(int pipefd,  int fd){
-    int zajetosc;
-    if (ioctl(pipefd, FIONREAD, &zajetosc) != -1) {
-        if (zajetosc > 1024 * 13) {
-            permits[fd] = 1;
-        } else {
-            permits[fd] = 0;
-        }
-    }
 }
 
 char* generate(char ASCI){
     char* buf=calloc(640, sizeof(char));
     memset(buf, ASCI, 640);
-  //  printf("%s\n", buf);
-   // fprintf(stderr, "  %c  ", ASCI);
+    //  printf("%s\n", buf);
+    // fprintf(stderr, "  %c  ", ASCI);
     return buf;
 }
 
@@ -249,12 +251,16 @@ void getOpt(int argc, char* argv[], char* o_arg, float *tempo) {
 }
 
 in_addr_t isAddrOk(char* o_arg,  char* port, char* host){
+    // akceptuje localhost:xxxx / xxxx / :xxxx->port0
     sscanf(o_arg, "%[^:]:%s", host, port);
     if(strtol(port, NULL, 0) == 0)
     {
         strcpy(port, host);
         strcpy(host, "localhost");
     }
+    struct hostent *he;
+    he=gethostbyname(host);
+    strcpy(host, inet_ntoa(*(struct in_addr*)he->h_addr));
     return strtol(port, NULL, 0);
 }
 
